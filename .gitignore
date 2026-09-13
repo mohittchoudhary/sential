@@ -19,13 +19,26 @@ models/
 
 # Environment & Credentials
 .env
+.env.*
+!.env.example
 *.pem
 *.key
+*.crt
+*.pfx
 
-# Local Data & Footage (Do not download or commit footage)
+# Local Data, Databases & Footage
+*.db
+*.sqlite
+*.sqlite3
 *.mp4
 *.avi
 *.mkv
 *.h264
 *.h265
 postgres_data/
+
+# Quarantine & Backup Artifacts
+quarantine/
+*.backup
+*.bak
+
