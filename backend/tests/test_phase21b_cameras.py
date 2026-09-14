@@ -348,3 +348,92 @@ def test_whep_proxy_missing_credentials_reports_auth_required(client, db_session
             assert "AUTHENTICATION_REQUIRED" in data["detail"]
 
 
+# ==============================================================================
+# 5. Camera Update & Foreign-Key Safe Delete Tests
+# ==============================================================================
+
+def test_update_camera_fields(client, db_session):
+    """Test updating camera location, coordinates, name, and status."""
+    cam = Camera(
+        id=6,
+        camera_code="CAM-006",
+        name="Old Cam Name",
+        location="Old Location",
+        latitude=20.0,
+        longitude=70.0,
+        status="offline",
+    )
+    db_session.add(cam)
+    db_session.commit()
+
+    payload = {
+        "name": "Timbavadi Gate Cam",
+        "location": "Timbavadi Gate / Madhuram Bypass Road, Junagadh, Gujarat, India",
+        "latitude": 21.5030,
+        "longitude": 70.4300,
+        "status": "online",
+    }
+    response = client.patch(f"/api/cameras/{cam.id}", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "Timbavadi Gate Cam"
+    assert data["location"] == "Timbavadi Gate / Madhuram Bypass Road, Junagadh, Gujarat, India"
+    assert data["latitude"] == 21.5030
+    assert data["longitude"] == 70.4300
+    assert data["status"] == "online"
+    # camera_code is unchanged
+    assert data["camera_code"] == "CAM-006"
+
+
+def test_delete_camera_without_events_hard_deletes(client, db_session):
+    """A camera added by mistake (no historical events/alerts) is completely removed."""
+    cam = Camera(id=99, camera_code="CAM-MISTAKE", name="Mistake Camera", status="offline")
+    db_session.add(cam)
+    db_session.commit()
+
+    del_resp = client.delete(f"/api/cameras/{cam.id}")
+    assert del_resp.status_code == 204
+
+    # Verify completely removed
+    get_resp = client.get(f"/api/cameras/{cam.id}")
+    assert get_resp.status_code == 404
+
+
+def test_delete_camera_with_historical_events_soft_deletes(client, db_session):
+    """A camera with historical events is soft-deleted (status='deleted') to preserve FK and investigation logs."""
+    from app.models.event import Event
+
+    cam = Camera(id=88, camera_code="CAM-HISTORICAL", name="Historical Cam", status="online")
+    db_session.add(cam)
+    db_session.commit()
+
+    event = Event(camera_id=cam.id, event_type="vehicle_detection", confidence=0.92)
+    db_session.add(event)
+    db_session.commit()
+
+    del_resp = client.delete(f"/api/cameras/{cam.id}")
+    assert del_resp.status_code == 204
+
+    # The camera record still exists in DB but status is 'deleted'
+    refreshed_cam = db_session.query(Camera).filter(Camera.id == cam.id).first()
+    assert refreshed_cam is not None
+    assert refreshed_cam.status == "deleted"
+
+    # Historical event is still intact!
+    saved_event = db_session.query(Event).filter(Event.camera_id == cam.id).first()
+    assert saved_event is not None
+    assert saved_event.id == event.id
+
+    # Deleted camera is excluded from active camera list and map
+    list_resp = client.get("/api/cameras")
+    assert list_resp.status_code == 200
+    codes = [c["camera_code"] for c in list_resp.json()["cameras"]]
+    assert "CAM-HISTORICAL" not in codes
+
+    map_resp = client.get("/api/cameras/map")
+    assert map_resp.status_code == 200
+    map_codes = [m["camera_code"] for m in map_resp.json()]
+    assert "CAM-HISTORICAL" not in map_codes
+
+
+

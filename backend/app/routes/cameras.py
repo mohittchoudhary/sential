@@ -41,10 +41,13 @@ def list_cameras(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=200, description="Max records to return"),
     status: str | None = Query(None, description="Filter by camera status"),
+    include_deleted: bool = Query(False, description="Include deleted cameras"),
     db: Session = Depends(get_db),
 ):
     """List all cameras with optional filtering."""
     query = db.query(Camera)
+    if not include_deleted:
+        query = query.filter(Camera.status != "deleted")
     if status:
         query = query.filter(Camera.status == status)
     total = query.count()
@@ -66,7 +69,7 @@ def get_cameras_map(
     Omits credentials and internal RTSP stream URLs.
     Cameras without valid coordinates will not produce invalid map coordinates.
     """
-    query = db.query(Camera)
+    query = db.query(Camera).filter(Camera.status != "deleted")
     if status:
         query = query.filter(Camera.status == status)
     cameras = query.order_by(Camera.id).all()
@@ -360,11 +363,43 @@ def update_camera(
     """Update an existing camera's fields."""
     camera = _resolve_camera(camera_id, db)
     update_data = payload.model_dump(exclude_unset=True)
+    if "stream_url" in update_data and update_data["stream_url"]:
+        from app.schemas.camera import sanitize_stream_url
+        update_data["stream_url"] = sanitize_stream_url(update_data["stream_url"])
     for field, value in update_data.items():
         setattr(camera, field, value)
     db.commit()
     db.refresh(camera)
     return CameraResponse.model_validate(camera)
+
+
+@router.delete("/{camera_id}", status_code=204)
+def delete_camera(camera_id: str, db: Session = Depends(get_db)):
+    """
+    Delete a camera from the Sentinel registry.
+    Foreign-key safe:
+    - If historical investigation records (events or alerts) exist for this camera,
+      safely set camera status to 'deleted' (soft delete) to preserve relational integrity.
+    - If no historical records exist (e.g. camera added by mistake), safely delete
+      any status history and remove the camera record cleanly from the database.
+    """
+    camera = _resolve_camera(camera_id, db)
+    from app.models.event import Event
+    from app.models.alert import Alert
+    from app.models.camera_status import CameraStatusHistory
+
+    has_events = db.query(Event).filter(Event.camera_id == camera.id).first() is not None
+    has_alerts = db.query(Alert).filter(Alert.camera_id == camera.id).first() is not None
+
+    if has_events or has_alerts:
+        camera.status = "deleted"
+        db.commit()
+    else:
+        db.query(CameraStatusHistory).filter(CameraStatusHistory.camera_id == camera.id).delete()
+        db.delete(camera)
+        db.commit()
+
+    return Response(status_code=204)
 
 
 @router.get("/{camera_id}/preview", tags=["Cameras"])

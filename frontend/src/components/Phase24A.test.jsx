@@ -280,13 +280,12 @@ describe('Phase 24A — CCTV Workstation Specifications & State Consistency', ()
     expect(screen.getByText('RUNNING')).toBeInTheDocument();
     expect(screen.getByText('FRAMES:')).toBeInTheDocument();
     expect(screen.getByText('240')).toBeInTheDocument();
-    expect(screen.getByText('KA02MM9091')).toBeInTheDocument();
-
-    // Verify video element, live preview container, and intelligence strip are in DOM
+    // Verify video element and live preview container are in DOM, and intelligence strip is removed
     expect(container.querySelector('.live-preview-container')).toBeInTheDocument();
     expect(container.querySelector('.live-video-element')).toBeInTheDocument();
-    expect(container.querySelector('.live-intelligence-strip')).toBeInTheDocument();
-    expect(screen.getByText(/LATEST VEHICLE INTELLIGENCE/i)).toBeInTheDocument();
+    expect(container.querySelector('.live-intelligence-strip')).not.toBeInTheDocument();
+    expect(screen.queryByText(/LATEST VEHICLE INTELLIGENCE/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('KA02MM9091')).not.toBeInTheDocument();
   });
 
   // 3. Unavailable Test Camera State (CAM-CRUD)
@@ -488,5 +487,34 @@ describe('Phase 24A — CCTV Workstation Specifications & State Consistency', ()
     const rawConn = 'ConnectionRefusedError: [Errno 111] Connection refused on port 8554';
     const humanConn = formatHumanReadableError(rawConn);
     expect(humanConn).toContain('network connection refused');
+  });
+
+  // 16. Verification of Latest Vehicle Intelligence Removal & Camera Wall Enlargement
+  it('16. Latest Vehicle Intelligence panel is removed and Camera Wall / Live Detections views expand', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /SURVEILLANCE/i })).toHaveClass('active');
+    });
+
+    // Verify LATEST VEHICLE INTELLIGENCE is not rendered on Surveillance
+    expect(screen.queryByText(/LATEST VEHICLE INTELLIGENCE/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/POSTGRESQL AUDIT PIPELINE/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/RECOGNIZED PLATE:/i)).not.toBeInTheDocument();
+
+    // Verify Camera Wall renders
+    expect(screen.getByText(/GRID MATRIX • CAMERA WALL/i)).toBeInTheDocument();
+
+    // Switch to LIVE DETECTIONS tab
+    const detectionsTab = screen.getByRole('tab', { name: /LIVE DETECTIONS/i });
+    fireEvent.click(detectionsTab);
+
+    await waitFor(() => {
+      expect(detectionsTab).toHaveClass('active');
+    });
+
+    // Verify LATEST VEHICLE INTELLIGENCE is not rendered on Live Detections view
+    expect(screen.queryByText(/LATEST VEHICLE INTELLIGENCE/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/POSTGRESQL AUDIT PIPELINE/i)).not.toBeInTheDocument();
   });
 });

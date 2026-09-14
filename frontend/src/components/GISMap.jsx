@@ -330,6 +330,7 @@ export default function GISMap({
               key={cam.id}
               position={[cam.latitude, cam.longitude]}
               {...(markerIcon ? { icon: markerIcon } : {})}
+              data-testid={`camera-marker-${cam.camera_code}`}
               eventHandlers={{
                 click: () => {
                   if (onSelectCamera) onSelectCamera(cam.id);
@@ -337,17 +338,20 @@ export default function GISMap({
               }}
             >
               <Popup>
-                <div className="camera-popup" style={{ color: '#172B4D', minWidth: '160px', fontSize: '0.85rem' }}>
+                <div className="camera-popup" style={{ color: '#172B4D', minWidth: '170px', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: '800', color: '#2563EB', marginBottom: '0.2rem', fontFamily: 'monospace' }}>
+                    CAMERA: {cam.camera_code}
+                  </div>
                   <div style={{ fontWeight: '700', marginBottom: '0.25rem' }}>
-                    {cam.name} ({cam.camera_code})
+                    {cam.name}
                   </div>
                   {cam.location && (
                     <div style={{ fontSize: '0.8rem', color: '#52657A', marginBottom: '0.25rem' }}>
-                      Location: {cam.location}
+                      <strong>Location:</strong> {cam.location}
                     </div>
                   )}
                   <div style={{ fontSize: '0.8rem', marginBottom: '0.5rem' }}>
-                    Status:{' '}
+                    <strong>Status:</strong>{' '}
                     <span
                       style={{
                         textTransform: 'uppercase',
@@ -362,10 +366,12 @@ export default function GISMap({
                     <button
                       type="button"
                       onClick={() => onSelectCamera(cam.id)}
-                      className="btn btn-xs btn-primary"
+                      className="btn btn-xs btn-primary btn-open-camera"
                       style={{ width: '100%' }}
+                      title="Open Camera"
+                      data-testid={`btn-open-camera-${cam.camera_code}`}
                     >
-                      {isSelected ? '✓ Active Focus' : 'Focus Camera'}
+                      {isSelected ? '✓ Camera Active' : 'Focus Camera'}
                     </button>
                   )}
                 </div>

@@ -36,6 +36,19 @@ export const cameraService = {
       body: JSON.stringify(payload),
     });
   },
+
+  async updateCamera(id, payload) {
+    return fetchClient(`/cameras/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async deleteCamera(id) {
+    return fetchClient(`/cameras/${id}`, {
+      method: 'DELETE',
+    });
+  },
   /**
    * Fetch safe preview URLs from authoritative catalog
    * @param {number} id

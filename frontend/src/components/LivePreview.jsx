@@ -4,99 +4,87 @@ const LivePreview = ({
   webrtcUrl,
   isTestMode = false,
   onStreamStatusChange = null,
-  enableEnhancements = false,
-  zoom = 1,
-  pan = { x: 0, y: 0 },
-  filterPreset = 'normal',
-  onPanChange = null,
 }) => {
+  const containerRef = useRef(null);
   const videoRef = useRef(null);
   const pcRef = useRef(null);
-  const containerRef = useRef(null);
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(!isTestMode);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Calculate pan clamping strictly within rendered video content bounds (accounts for object-fit: contain and letterboxing)
-  const clampPan = (targetX, targetY, currentZoom) => {
-    if (!containerRef.current || currentZoom <= 1) {
-      return { x: 0, y: 0 };
-    }
-    const rect = containerRef.current.getBoundingClientRect();
-    const containerW = rect.width;
-    const containerH = rect.height;
-    if (containerW <= 0 || containerH <= 0) {
-      return { x: 0, y: 0 };
-    }
-
-    // Determine intrinsic video aspect ratio (fallback to 16:9 standard for CCTV)
-    const videoEl = videoRef.current;
-    let videoAspect = 16 / 9;
-    if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-      videoAspect = videoEl.videoWidth / videoEl.videoHeight;
-    }
-
-    const containerAspect = containerW / containerH;
-    let renderedW = containerW;
-    let renderedH = containerH;
-
-    if (videoAspect > containerAspect) {
-      // Letterboxed on top/bottom
-      renderedW = containerW;
-      renderedH = containerW / videoAspect;
-    } else {
-      // Pillarboxed on left/right
-      renderedH = containerH;
-      renderedW = containerH * videoAspect;
-    }
-
-    // Maximum pan bounds to allow reaching video edges while preventing black gap voids
-    const maxPanX = Math.max(0, (renderedW * currentZoom - containerW) / 2);
-    const maxPanY = Math.max(0, (renderedH * currentZoom - containerH) / 2);
-
-    return {
-      x: Math.max(-maxPanX, Math.min(maxPanX, targetX)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, targetY)),
+  // Fullscreen event listener and cleanup
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFs = Boolean(
+        document.fullscreenElement === containerRef.current ||
+        document.webkitFullscreenElement === containerRef.current ||
+        document.mozFullScreenElement === containerRef.current ||
+        document.msFullscreenElement === containerRef.current
+      );
+      setIsFullscreen(isFs);
     };
-  };
 
-  const handlePointerDown = (e) => {
-    if (!enableEnhancements || zoom <= 1) return;
-    if (e.button !== undefined && e.button !== 0) return;
-    isDraggingRef.current = true;
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      panX: pan.x,
-      panY: pan.y,
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+
+      if (
+        document.fullscreenElement === containerRef.current ||
+        document.webkitFullscreenElement === containerRef.current
+      ) {
+        try {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } catch (_) {}
+      }
     };
-    if (e.currentTarget && typeof e.currentTarget.setPointerCapture === 'function') {
+  }, []);
+
+  // Exit fullscreen on camera switch
+  useEffect(() => {
+    if (
+      document.fullscreenElement === containerRef.current ||
+      document.webkitFullscreenElement === containerRef.current
+    ) {
       try {
-        e.currentTarget.setPointerCapture(e.pointerId);
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       } catch (_) {}
     }
-  };
+  }, [webrtcUrl]);
 
-  const handlePointerMove = (e) => {
-    if (!isDraggingRef.current || !enableEnhancements || zoom <= 1) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    const rawX = dragStartRef.current.panX + dx;
-    const rawY = dragStartRef.current.panY + dy;
-    const clamped = clampPan(rawX, rawY, zoom);
-    if (onPanChange) {
-      onPanChange(clamped);
-    }
-  };
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
 
-  const handlePointerUp = (e) => {
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      if (e.currentTarget && typeof e.currentTarget.releasePointerCapture === 'function') {
-        try {
-          e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch (_) {}
+    if (!isFullscreen) {
+      const el = containerRef.current;
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.mozRequestFullScreen) {
+        el.mozRequestFullScreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      } else if (videoRef.current && videoRef.current.webkitEnterFullscreen) {
+        videoRef.current.webkitEnterFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
       }
     }
   };
@@ -273,38 +261,11 @@ const LivePreview = ({
     };
   }, [webrtcUrl, isTestMode]);
 
-  // Display presentation filter string
-  let filterCss = 'none';
-  if (enableEnhancements) {
-    if (filterPreset === 'contrast') {
-      filterCss = 'contrast(1.35) brightness(1.05) saturate(1.1)';
-    } else if (filterPreset === 'night') {
-      filterCss = 'contrast(1.45) brightness(1.25) grayscale(0.25)';
-    }
-  }
-
-  // Active clamped pan for style
-  const activePan = enableEnhancements && zoom > 1 ? clampPan(pan.x, pan.y, zoom) : { x: 0, y: 0 };
-
-  const videoTransform = enableEnhancements && zoom > 1
-    ? `translate(${activePan.x}px, ${activePan.y}px) scale(${zoom})`
-    : (zoom > 1 ? `scale(${zoom})` : 'none');
-
-  const videoCursor = enableEnhancements && zoom > 1 ? 'grab' : 'default';
-
   return (
     <div
       ref={containerRef}
-      className={`live-preview-container ${enableEnhancements && zoom > 1 ? 'zoom-active' : ''}`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      style={{
-        overflow: 'hidden',
-        position: 'relative',
-        touchAction: enableEnhancements && zoom > 1 ? 'none' : 'auto',
-      }}
+      className={`live-preview-container ${isFullscreen ? 'is-fullscreen' : ''}`}
+      data-testid="live-preview-container"
     >
       {isTestMode ? (
         <div className="test-camera-placeholder" role="note">
@@ -335,16 +296,49 @@ const LivePreview = ({
             autoPlay
             playsInline
             muted
-            className={`live-video-element ${enableEnhancements && filterPreset !== 'normal' ? `filter-${filterPreset}` : ''}`}
+            className="live-video-element"
             style={{
-              display: (isLoading || error) ? 'none' : 'block',
-              transform: videoTransform,
-              transformOrigin: 'center center',
-              filter: filterCss,
-              cursor: videoCursor,
-              transition: isDraggingRef.current ? 'none' : 'transform 0.15s ease-out',
+              display: (isLoading || error) ? 'none' : 'block'
             }}
           />
+
+          {/* YouTube-style Maximize / Fullscreen Button */}
+          <button
+            type="button"
+            className="btn-video-fullscreen"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit Fullscreen' : 'Maximize Video'}
+            title={isFullscreen ? 'Exit Fullscreen (ESC)' : 'Maximize Video (Fullscreen)'}
+            data-testid="btn-fullscreen"
+          >
+            {isFullscreen ? (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+              </svg>
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+              </svg>
+            )}
+          </button>
         </>
       )}
     </div>

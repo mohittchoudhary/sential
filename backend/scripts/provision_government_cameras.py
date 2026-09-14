@@ -39,55 +39,55 @@ CAMERAS_SPEC = [
         "camera_code": "CAM-001",
         "stream_id": "cam01",
         "name": "Camera 01",
-        "location": "Surat",
-        "latitude": 21.1702,
-        "longitude": 72.8311,
+        "location": "Chimanbhai Patel Bridge, Ahmedabad, Gujarat, India",
+        "latitude": 23.069362,
+        "longitude": 72.587224,
         "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-002",
         "stream_id": "cam02",
         "name": "Camera 02",
-        "location": None,
-        "latitude": None,
-        "longitude": None,
-        "vendor": None
+        "location": "Janpath T Junction, Ahmedabad, Gujarat, India",
+        "latitude": 23.02509,
+        "longitude": 72.57094,
+        "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-003",
         "stream_id": "cam03",
         "name": "Camera 03",
-        "location": None,
-        "latitude": None,
-        "longitude": None,
-        "vendor": None
+        "location": "O.N.G.C. Office / Avani Bhavan, Chandkheda, Ahmedabad, Gujarat, India",
+        "latitude": 23.10556,
+        "longitude": 72.59734,
+        "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-004",
         "stream_id": "cam04",
         "name": "Camera 04",
-        "location": None,
-        "latitude": None,
-        "longitude": None,
-        "vendor": None
+        "location": "Paldi Circle, Ahmedabad, Gujarat, India",
+        "latitude": 23.0134,
+        "longitude": 72.5624,
+        "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-005",
         "stream_id": "cam05",
         "name": "Camera 05",
-        "location": None,
-        "latitude": None,
-        "longitude": None,
-        "vendor": None
+        "location": "Visat Teen Rasta, Ahmedabad, Gujarat, India",
+        "latitude": 23.1027,
+        "longitude": 72.5952,
+        "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-006",
         "stream_id": "cam06",
         "name": "Camera 06",
-        "location": None,
-        "latitude": None,
-        "longitude": None,
-        "vendor": None
+        "location": "Timbavadi Gate / Madhuram Bypass Road, Junagadh, Gujarat, India",
+        "latitude": 21.5030,
+        "longitude": 70.4300,
+        "vendor": "Gujarat Police Traffic Branch"
     },
     {
         "camera_code": "CAM-007",

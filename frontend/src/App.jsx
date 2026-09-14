@@ -8,6 +8,7 @@ import RecordsWorkspace from './components/RecordsWorkspace';
 import WatchlistManager from './components/WatchlistManager';
 import HealthDashboard from './components/HealthDashboard';
 import AddCameraModal from './components/AddCameraModal';
+import CameraManagement from './components/CameraManagement';
 import { cameraService } from './api/cameraService';
 import { alertService } from './api/alertService';
 import './App.css';
@@ -115,6 +116,9 @@ export default function App() {
 
   const handleSelectCamera = (id) => {
     setSelectedCameraId(id);
+    if (mode !== 'surveillance' && mode !== 'investigation') {
+      setMode('surveillance');
+    }
   };
 
   const handlePlateSelect = (plate) => {
@@ -218,16 +222,16 @@ export default function App() {
             >
               HEALTH
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === 'cameras'}
+              className={`nav-btn ${mode === 'cameras' ? 'active' : ''}`}
+              onClick={() => setMode('cameras')}
+            >
+              CAMERAS
+            </button>
           </div>
-
-          <button
-            type="button"
-            className="btn btn-sm btn-primary add-cam-btn"
-            onClick={() => setIsAddCameraOpen(true)}
-            title="Register new camera node"
-          >
-            + ADD CAMERA
-          </button>
         </div>
       </header>
 
@@ -405,6 +409,19 @@ export default function App() {
         {mode === 'health' && (
           <section className="full-workspace-column">
             <HealthDashboard lightTheme={true} />
+          </section>
+        )}
+
+        {mode === 'cameras' && (
+          <section className="full-workspace-column">
+            <CameraManagement
+              cameras={cameras}
+              onRefreshCameras={loadCameras}
+              onSelectCamera={(camId) => {
+                setSelectedCameraId(camId);
+                setMode('surveillance');
+              }}
+            />
           </section>
         )}
       </main>
